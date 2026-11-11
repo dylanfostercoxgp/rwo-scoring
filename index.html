@@ -147,7 +147,7 @@
 <script src="engine.js"></script>
 <script>
 'use strict';
-var VERSION = '3.0.2';
+var VERSION = '3.0.3';
 var LOCK_MS = 10000; // tap cooldown per boat
 var COLORS = ['#1a73e8', '#d93025', '#188038', '#e37400', '#8430ce', '#007b83', '#b31412', '#5f6368', '#c26401', '#3949ab', '#00897b', '#6d4c41'];
 var DEMO_CFG = {
@@ -848,23 +848,61 @@ function viewPoints() {
 function viewQual() {
   var list = RWO.computeQual(cfg(), EVENTS);
   if (!list.length) { $('v-qual').innerHTML = '<div class="card">No classes.</div>'; return; }
-  if (!S.qcls || !list.some(function (c) { return c.cls === S.qcls; })) S.qcls = list[0].cls;
-  var C = list.filter(function (c) { return c.cls === S.qcls; })[0];
-  var h = '<div class="bar"><select id="qSel">' + list.map(function (c) { return '<option' + (c.cls === S.qcls ? ' selected' : '') + '>' + esc(c.cls) + '</option>'; }).join('') + '</select><span class="muted">One timed lap per boat. Several boats can be on course at once.</span></div>';
-  h += '<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr))">';
-  C.rows.slice().sort(function (a, b) { return RWO.numSort(a.num, b.num); }).forEach(function (r) {
-    var cl = r.status === 'ON COURSE' ? 'on' : r.status === 'DONE' ? 'done' : '';
-    h += '<div class="qtile ' + cl + '"><div class="num">' + esc(r.num) + '</div><div class="muted">' + esc(r.team) + '</div>';
-    if (r.status === 'ON COURSE') h += '<div class="clock" data-qclock="' + r.goT + '">' + clock(Date.now() - r.goT) + '</div><button class="btn green" style="font-size:22px;padding:18px" data-qfin="' + esc(r.key) + '">FINISH</button>';
-    else if (r.status === 'DONE') h += '<div class="clock">' + r.timeStr + '</div><div><b>P' + r.pos + '</b></div>';
-    else if (r.status === 'DNS') h += '<div class="clock">DNS</div>';
-    else h += '<button class="btn" style="font-size:22px;padding:18px" data-qgo="' + esc(r.key) + '">GO</button>';
-    h += '<div class="row"><button class="btn gray small" data-qundo="' + esc(r.key) + '">Undo</button>' + (r.status === 'WAITING' ? '<button class="btn amber small" data-qdns="' + esc(r.key) + '">DNS</button>' : '') + '</div></div>';
+  var all = list.map(function (c) { return c.cls; });
+  S.qsel = (Array.isArray(S.qsel) ? S.qsel : []).filter(function (c) { return all.indexOf(c) >= 0; });
+  var shown = list.filter(function (c) { return S.qsel.indexOf(c.cls) >= 0; });
+  var h = '<div class="card"><h3>Classes qualifying now</h3><p class="muted" style="margin:0 0 8px">Tap every class in this session. All of them show below, and you can GO or FINISH any boat at any time. Several boats can be on course at once.</p><div class="bar">' +
+    list.map(function (c) {
+      var on = S.qsel.indexOf(c.cls) >= 0, done = c.rows.filter(function (r) { return r.status === 'DONE'; }).length;
+      return '<button class="btn small ' + (on ? '' : 'gray') + '" data-qc="' + esc(c.cls) + '" style="' + (on ? 'background:' + classColor(c.cls) : '') + '">' + (on ? '&#10003; ' : '') + esc(c.cls) + (done ? ' (' + done + '/' + c.rows.length + ')' : '') + '</button>';
+    }).join('') + '<button class="btn small amber" id="qNone">Clear</button></div></div>';
+  if (!shown.length) { $('v-qual').innerHTML = h + '<div class="banner info">Pick one or more classes above to start qualifying.</div>'; bindQual(); return; }
+
+  // boats on course right now, across every class shown, with a big FINISH button
+  var onCourse = [];
+  shown.forEach(function (c) { c.rows.forEach(function (r) { if (r.status === 'ON COURSE') onCourse.push({ c: c.cls, r: r }); }); });
+  onCourse.sort(function (a, b) { return a.r.goT - b.r.goT; });
+  if (onCourse.length) {
+    h += '<div class="card" style="border:3px solid var(--amber)"><h3>On course now (' + onCourse.length + ')</h3><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr))">' +
+      onCourse.map(function (o) {
+        return '<div class="qtile on"><div style="background:' + classColor(o.c) + ';color:#fff;font-weight:800;font-size:12px;border-radius:6px;padding:2px">' + esc(o.c) + '</div><div class="num">' + esc(o.r.num) + '</div>' +
+          '<div class="clock" data-qclock="' + o.r.goT + '">' + clock(Date.now() - o.r.goT) + '</div><button class="btn green" style="font-size:22px;padding:18px" data-qfin="' + esc(o.r.key) + '">FINISH</button></div>';
+      }).join('') + '</div></div>';
+  }
+
+  shown.forEach(function (C) {
+    h += '<div class="clshead"><i style="background:' + classColor(C.cls) + '"></i>' + esc(C.cls) + '</div><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr))">';
+    C.rows.slice().sort(function (a, b) { return RWO.numSort(a.num, b.num); }).forEach(function (r) {
+      var cl = r.status === 'ON COURSE' ? 'on' : r.status === 'DONE' ? 'done' : '';
+      h += '<div class="qtile ' + cl + '"><div style="background:' + classColor(C.cls) + ';color:#fff;font-weight:800;font-size:12px;border-radius:6px;padding:2px">' + esc(C.cls) + '</div><div class="num">' + esc(r.num) + '</div><div class="muted" style="font-size:12px;height:30px;overflow:hidden">' + esc(r.team) + '</div>';
+      if (r.status === 'ON COURSE') h += '<div class="clock" data-qclock="' + r.goT + '">' + clock(Date.now() - r.goT) + '</div><button class="btn green" style="font-size:20px;padding:14px" data-qfin="' + esc(r.key) + '">FINISH</button>';
+      else if (r.status === 'DONE') h += '<div class="clock">' + r.timeStr + '</div><div><b>P' + r.pos + '</b> in class</div>';
+      else if (r.status === 'DNS') h += '<div class="clock">DNS</div>';
+      else h += '<button class="btn" style="font-size:20px;padding:14px" data-qgo="' + esc(r.key) + '">GO</button>';
+      h += '<div class="row"><button class="btn gray small" data-qundo="' + esc(r.key) + '">Undo</button>' + (r.status === 'WAITING' ? '<button class="btn amber small" data-qdns="' + esc(r.key) + '">DNS</button>' : '') + '</div></div>';
+    });
+    h += '</div>';
   });
-  h += '</div><div class="card" style="margin-top:12px"><h3>' + esc(C.cls) + ' qualifying order</h3><table><tr><th>Pos</th><th>Boat</th><th>Team</th><th>Time</th></tr>' +
-    C.rows.filter(function (r) { return r.status === 'DONE'; }).map(function (r) { return '<tr><td><b>' + r.pos + '</b></td><td><b>' + esc(r.num) + '</b></td><td>' + esc(r.team) + '</td><td>' + r.timeStr + '</td></tr>'; }).join('') + '</table></div>';
-  var el = $('v-qual'); el.innerHTML = h;
-  $('qSel').onchange = function () { S.qcls = this.value; saveS(); dirty(); };
+
+  h += '<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr));margin-top:14px">' + shown.map(function (C) {
+    var done = C.rows.filter(function (r) { return r.status === 'DONE'; });
+    return '<div class="card"><h3>' + esc(C.cls) + ' qualifying order</h3>' + (done.length ? '<table><tr><th>Pos</th><th>Boat</th><th>Team</th><th>Time</th></tr>' +
+      done.map(function (r) { return '<tr><td><b>' + r.pos + '</b></td><td><b>' + esc(r.num) + '</b></td><td class="wrap">' + esc(r.team) + '</td><td>' + r.timeStr + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">No times yet.</p>') + '</div>';
+  }).join('') + '</div>';
+  $('v-qual').innerHTML = h;
+  bindQual();
+}
+
+function bindQual() {
+  var el = $('v-qual');
+  el.querySelectorAll('[data-qc]').forEach(function (b) {
+    b.onclick = function () {
+      var c = b.dataset.qc, i = S.qsel.indexOf(c);
+      if (i >= 0) S.qsel.splice(i, 1); else S.qsel.push(c);
+      saveS(); dirty();
+    };
+  });
+  var n = $('qNone'); if (n) n.onclick = function () { S.qsel = []; saveS(); dirty(); };
   el.querySelectorAll('[data-qgo]').forEach(function (b) { b.addEventListener('pointerdown', function (e) { e.preventDefault(); addEvent({ type: 'qgo', boat: b.dataset.qgo, t: Date.now() }); wakeLock(); }); });
   el.querySelectorAll('[data-qfin]').forEach(function (b) { b.addEventListener('pointerdown', function (e) { e.preventDefault(); addEvent({ type: 'qfin', boat: b.dataset.qfin, t: Date.now() }); }); });
   el.querySelectorAll('[data-qdns]').forEach(function (b) { b.onclick = function () { addEvent({ type: 'qdns', boat: b.dataset.qdns }); }; });
