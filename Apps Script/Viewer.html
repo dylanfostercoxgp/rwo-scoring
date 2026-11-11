@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: #f4f5f7; color: #111; }
+  header { background: #0b1f3a; color: #fff; padding: 14px 18px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header h1 { font-size: 20px; margin: 0; flex: 1; min-width: 200px; }
+  nav button { background: transparent; color: #cfd8e3; border: 1px solid #3b4f6b; padding: 8px 14px; border-radius: 6px; font-size: 15px; cursor: pointer; margin-left: 4px; }
+  nav button.on { background: #fff; color: #0b1f3a; font-weight: 700; }
+  main { padding: 14px; max-width: 1200px; margin: 0 auto; }
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+  .bar button { border: 1px solid #c5cbd3; background: #fff; padding: 8px 12px; border-radius: 6px; font-size: 14px; cursor: pointer; }
+  .bar button.on { background: #0b1f3a; color: #fff; border-color: #0b1f3a; }
+  .card { background: #fff; border-radius: 10px; margin-bottom: 16px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .card h2 { margin: 0; padding: 10px 14px; background: #111; color: #fff; font-size: 16px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .tag { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #fbbc04; color: #111; font-weight: 700; }
+  .tag.off { background: #34a853; color: #fff; }
+  .tag.red { background: #d93025; color: #fff; }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; background: #eef0f3; padding: 7px 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; }
+  td { padding: 7px 10px; border-top: 1px solid #eceef1; white-space: nowrap; }
+  td.team { white-space: normal; min-width: 160px; }
+  td.num { font-weight: 800; font-size: 16px; }
+  td.pos { font-weight: 800; width: 44px; }
+  .st { font-size: 12px; font-weight: 700; color: #5f6368; }
+  .pen { color: #c5221f; font-size: 12px; white-space: normal; }
+  .muted { color: #5f6368; font-size: 13px; }
+  .upd { font-size: 12px; color: #cfd8e3; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">RWO Live Results</h1>
+  <nav>
+    <button data-v="results">Results</button>
+    <button data-v="standings">Standings</button>
+    <button data-v="qualifying">Qualifying</button>
+  </nav>
+  <span class="upd" id="upd">Loading...</span>
+</header>
+<main id="main"></main>
+<script>
+var VIEW = '<?= view ?>' || 'results';
+var DATA = null, RACE = null;
+var REFRESH_SECS = 5;
+
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+document.querySelectorAll('nav button').forEach(function (b) {
+  b.onclick = function () { VIEW = b.dataset.v; draw(); };
+});
+
+function load() {
+  google.script.run.withSuccessHandler(function (txt) {
+    DATA = JSON.parse(txt);
+    document.getElementById('title').textContent = DATA.eventName + ' - Live Results';
+    document.getElementById('upd').textContent = 'Updated ' + new Date(DATA.updated).toLocaleTimeString();
+    draw();
+    setTimeout(load, REFRESH_SECS * 1000);
+  }).withFailureHandler(function () {
+    document.getElementById('upd').textContent = 'Reconnecting...';
+    setTimeout(load, REFRESH_SECS * 1000);
+  }).getPublicData();
+}
+
+function draw() {
+  document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === VIEW); });
+  if (!DATA) return;
+  var m = document.getElementById('main');
+  if (VIEW === 'standings') m.innerHTML = standings();
+  else if (VIEW === 'qualifying') m.innerHTML = qualifying();
+  else m.innerHTML = results();
+  m.querySelectorAll('[data-race]').forEach(function (b) { b.onclick = function () { RACE = Number(b.dataset.race); draw(); }; });
+}
+
+function statusTag(R) {
+  if (R.official) return '<span class="tag off">OFFICIAL</span>';
+  if (R.status === 'RED FLAG') return '<span class="tag red">RED FLAG</span>';
+  if (R.status === 'RUNNING') return '<span class="tag">LIVE</span>';
+  if (R.status === 'ENDED') return '<span class="tag">PROVISIONAL</span>';
+  return '<span class="tag" style="background:#dadce0">NOT STARTED</span>';
+}
+
+function results() {
+  var races = DATA.races;
+  if (!races.length) return '<p class="muted">No races set up yet.</p>';
+  if (RACE == null) {
+    var live = races.filter(function (r) { return r.status === 'RUNNING' || r.status === 'RED FLAG'; })[0];
+    var lastDone = races.filter(function (r) { return r.status !== 'NOT STARTED'; }).pop();
+    RACE = (live || lastDone || races[0]).race;
+  }
+  var h = '<div class="bar">' + races.map(function (r) {
+    return '<button data-race="' + r.race + '" class="' + (r.race === RACE ? 'on' : '') + '">Race ' + r.race + ' (' + esc(r.day) + ')</button>';
+  }).join('') + '</div>';
+  var R = races.filter(function (r) { return r.race === RACE; })[0];
+  if (R.hidden) return h + '<p class="muted">Results will appear here once this race is official.</p>';
+  R.classes.forEach(function (C) {
+    h += '<div class="card"><h2><span>' + esc(C.cls) + ' &middot; ' + C.laps + ' laps' + (C.uim ? ' &middot; UIM + APBA' : '') + '</span>' + statusTag(R) + '</h2><div class="scroll"><table><tr><th>Pos</th><th>Boat</th><th>Team</th><th>Laps</th><th>Time</th><th>Last Lap</th><th>Gap</th><th>APBA</th>' + (C.uim ? '<th>UIM</th>' : '') + '</tr>';
+    C.rows.forEach(function (x) {
+      h += '<tr><td class="pos">' + esc(x.pos) + '</td><td class="num">' + esc(x.num) + '</td><td class="team">' + esc(x.team) +
+        (x.pen ? '<div class="pen">Penalty: ' + esc(x.pen) + '</div>' : '') + '</td><td>' + x.laps + '</td><td>' +
+        (x.status === 'FINISHED' || x.status === 'RACING' ? esc(x.time) : '<span class="st">' + esc(x.status) + '</span> ' + (x.status === 'LAPS DOWN' ? esc(x.time) : '')) +
+        '</td><td>' + esc(x.last) + '</td><td>' + esc(x.gap) + '</td><td>' + esc(x.apba) + '</td>' + (C.uim ? '<td>' + esc(x.uim) + '</td>' : '') + '</tr>';
+    });
+    h += '</table></div></div>';
+  });
+  return h;
+}
+
+function standings() {
+  var h = DATA.officialOnly ? '' : '<p class="muted">Includes races that are not official yet. Bonus points are added after each class\'s last race.</p>';
+  DATA.standings.forEach(function (C) {
+    if (!C.rows.length) return;
+    h += '<div class="card"><h2><span>' + esc(C.cls) + (C.uim ? ' &middot; UIM + APBA' : '') + '</span>' + (C.complete ? '<span class="tag off">WEEKEND COMPLETE</span>' : '') + '</h2><div class="scroll"><table><tr><th>Pos</th><th>Boat</th><th>Team</th>';
+    C.races.forEach(function (r) { h += '<th>Race ' + r + '</th>'; if (C.uim) h += '<th>R' + r + ' UIM</th>'; });
+    h += '<th>Bonus</th><th>Total</th>' + (C.uim ? '<th>UIM Total</th>' : '') + '</tr>';
+    C.rows.forEach(function (b) {
+      h += '<tr><td class="pos">' + esc(b.pos) + '</td><td class="num">' + esc(b.num) + '</td><td class="team">' + esc(b.team) + '</td>';
+      C.races.forEach(function (r) { var x = b.races[r]; h += '<td>' + (x ? esc(x.apba) : '') + '</td>'; if (C.uim) h += '<td>' + (x ? esc(x.uim) : '') + '</td>'; });
+      h += '<td>' + esc(b.bonus) + '</td><td><b>' + esc(b.total) + '</b></td>' + (C.uim ? '<td><b>' + esc(b.uim) + '</b></td>' : '') + '</tr>';
+    });
+    h += '</table></div></div>';
+  });
+  return h || '<p class="muted">No points yet.</p>';
+}
+
+function qualifying() {
+  var h = '';
+  DATA.qual.forEach(function (C) {
+    if (!C.rows.some(function (r) { return r.status !== 'WAITING'; })) return;
+    h += '<div class="card"><h2><span>' + esc(C.cls) + ' &middot; Qualifying</span></h2><div class="scroll"><table><tr><th>Pos</th><th>Boat</th><th>Team</th><th>Time</th><th>Status</th></tr>';
+    C.rows.forEach(function (r) {
+      h += '<tr><td class="pos">' + esc(r.pos) + '</td><td class="num">' + esc(r.num) + '</td><td class="team">' + esc(r.team) + '</td><td>' + esc(r.timeStr) + '</td><td class="st">' + (r.status === 'DONE' ? '' : esc(r.status)) + '</td></tr>';
+    });
+    h += '</table></div></div>';
+  });
+  return h || '<p class="muted">No qualifying times yet.</p>';
+}
+
+load();
+</script>
+</body>
+</html>

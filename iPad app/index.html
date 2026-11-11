@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="RWO Scoring">
+<meta name="theme-color" content="#0b1f3a">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>RWO Scoring</title>
+<style>
+  :root { --navy: #0b1f3a; --green: #1e8e3e; --green2: #34a853; --red: #d93025; --amber: #f9ab00; --gray: #9aa0a6; --bg: #eef1f5; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: #111; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; touch-action: manipulation; }
+  body { padding-bottom: env(safe-area-inset-bottom); }
+  button, select, input { font: inherit; }
+  button { cursor: pointer; touch-action: manipulation; }
+  #top { position: sticky; top: 0; z-index: 20; background: var(--navy); color: #fff; padding: calc(6px + env(safe-area-inset-top)) 10px 0; }
+  #top .row1 { display: flex; align-items: center; gap: 10px; }
+  #brand { font-weight: 800; font-size: 18px; letter-spacing: .02em; }
+  #evname { color: #cfd8e3; font-size: 14px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #sync { font-size: 14px; font-weight: 700; padding: 6px 12px; border-radius: 16px; background: #1e8e3e; white-space: nowrap; }
+  #sync.off { background: var(--amber); color: #111; }
+  #sync.err { background: var(--red); }
+  #tabs { display: flex; gap: 2px; overflow-x: auto; margin-top: 6px; }
+  #tabs button { flex: 1; min-width: 92px; background: transparent; color: #cfd8e3; border: 0; padding: 12px 8px; font-size: 16px; font-weight: 600; border-bottom: 4px solid transparent; position: relative; }
+  #tabs button.on { color: #fff; border-bottom-color: #fff; }
+  #tabs .dot { position: absolute; top: 6px; right: 8px; background: var(--red); color: #fff; font-size: 11px; border-radius: 9px; padding: 1px 6px; }
+  #practice { display: none; background: #7b1fa2; color: #fff; text-align: center; font-weight: 700; padding: 6px; }
+  body.practice #practice { display: block; }
+  main { padding: 10px; }
+  .view { display: none; }
+  .view.on { display: block; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .bar select { font-size: 18px; padding: 10px; border-radius: 8px; border: 1px solid #bbb; background: #fff; max-width: 100%; }
+  .seg { display: inline-flex; border: 2px solid var(--navy); border-radius: 10px; overflow: hidden; }
+  .seg button { background: #fff; border: 0; padding: 10px 14px; font-size: 15px; font-weight: 700; color: var(--navy); }
+  .seg button.on { background: var(--navy); color: #fff; }
+  .btn { border: 0; border-radius: 10px; padding: 12px 18px; font-size: 17px; font-weight: 800; background: var(--navy); color: #fff; }
+  .btn.red { background: var(--red); }
+  .btn.green { background: var(--green); }
+  .btn.gray { background: #dadce0; color: #111; }
+  .btn.amber { background: var(--amber); color: #111; }
+  .btn.small { padding: 8px 12px; font-size: 14px; }
+  .btn:disabled { opacity: .45; }
+  .spacer { flex: 1; }
+  .starts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; margin-bottom: 10px; }
+  .start { background: #fff; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; border: 2px solid #dadce0; }
+  .start .lbl { flex: 1; font-size: 15px; }
+  .start .lbl b { font-size: 17px; display: block; }
+  .start .clock { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 140px; text-align: right; }
+  .start .go { font-size: 22px; padding: 16px 26px; }
+  .banner { padding: 12px 14px; border-radius: 10px; font-weight: 700; margin-bottom: 10px; font-size: 17px; }
+  .banner.red { background: var(--red); color: #fff; }
+  .banner.done { background: #e6f4ea; color: #137333; }
+  .banner.info { background: #fff8e1; color: #6b4e00; }
+  .clshead { font-weight: 800; font-size: 16px; margin: 12px 2px 6px; display: flex; gap: 8px; align-items: center; }
+  .clshead i { display: inline-block; width: 16px; height: 16px; border-radius: 4px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .tile { position: relative; background: #fff; border-radius: 14px; border: 3px solid #c8ccd2; min-height: 150px; padding: 26px 8px 46px; text-align: center; user-select: none; -webkit-user-select: none; overflow: hidden; }
+  .tile .band { position: absolute; top: 0; left: 0; right: 0; height: 22px; font-size: 12px; font-weight: 800; color: #fff; line-height: 22px; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; overflow: hidden; }
+  .tile .num { font-size: 50px; font-weight: 900; line-height: 1; margin-top: 4px; }
+  .tile .team { font-size: 12px; color: #444; height: 30px; overflow: hidden; margin-top: 2px; }
+  .tile .laps { font-size: 20px; font-weight: 800; }
+  .tile .last { font-size: 13px; color: #555; font-variant-numeric: tabular-nums; }
+  .tile .undo { position: absolute; left: 6px; right: 6px; bottom: 6px; height: 34px; border: 0; border-radius: 8px; background: #eceff3; color: #333; font-weight: 800; font-size: 15px; }
+  .tile.tapped { background: var(--green2); border-color: var(--green); color: #fff; }
+  .tile.tapped .team, .tile.tapped .last { color: #eafff0; }
+  .tile.tapped .big { position: absolute; inset: 22px 0 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--green2); font-weight: 900; font-size: 26px; }
+  .tile.tapped .big small { font-size: 15px; font-weight: 700; }
+  .tile.tapped .big .bn { font-size: 44px; line-height: 1; }
+  .tile.finished { background: var(--green); border-color: #0d652d; color: #fff; }
+  .tile.finished .team, .tile.finished .last { color: #d7f5df; }
+  .tile.out { background: #e8eaed; color: #777; border-color: #dadce0; }
+  .tile.flash { animation: flash .35s; }
+  @keyframes flash { from { transform: scale(.94); } to { transform: scale(1); } }
+  .tile .stat { font-size: 14px; font-weight: 900; letter-spacing: .04em; }
+  .card { background: #fff; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .card h3 { margin: 0 0 8px; font-size: 18px; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th { text-align: left; background: #eef0f3; padding: 8px; font-size: 12px; text-transform: uppercase; white-space: nowrap; }
+  td { padding: 8px; border-top: 1px solid #eceef1; white-space: nowrap; }
+  td.wrap { white-space: normal; }
+  .muted { color: #5f6368; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 800; background: #e8eaed; }
+  .pill.green { background: #e6f4ea; color: #137333; } .pill.red { background: #fce8e6; color: #a50e0e; } .pill.amber { background: #fef7e0; color: #7a5200; }
+  label.f { display: block; margin: 10px 0 4px; font-weight: 700; }
+  input.f, select.f { width: 100%; font-size: 18px; padding: 12px; border: 1px solid #bbb; border-radius: 8px; background: #fff; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  #modal { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; z-index: 50; align-items: flex-start; justify-content: center; padding: 40px 12px; overflow-y: auto; }
+  #modal.on { display: flex; }
+  #modal .box { background: #fff; border-radius: 14px; padding: 18px; width: 100%; max-width: 640px; }
+  #modal h2 { margin: 0 0 10px; }
+  #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 60; display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; }
+  #toast div { background: #202124; color: #fff; padding: 12px 18px; border-radius: 10px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+  #toast div.err { background: var(--red); }
+  #toast div.ok { background: var(--green); }
+  .flag { border-left: 6px solid var(--amber); }
+  .opt { display: block; width: 100%; text-align: left; margin: 8px 0; padding: 14px; border-radius: 10px; border: 2px solid #dadce0; background: #fff; font-size: 16px; }
+  .opt.on { border-color: var(--navy); background: #e8f0fe; }
+  .opt b { font-size: 18px; display: block; }
+  .qtile { background: #fff; border-radius: 12px; border: 3px solid #c8ccd2; padding: 10px; display: flex; flex-direction: column; gap: 6px; text-align: center; }
+  .qtile .num { font-size: 40px; font-weight: 900; }
+  .qtile.on { border-color: var(--amber); background: #fff8e1; }
+  .qtile.done { border-color: var(--green); background: #e6f4ea; }
+  .qtile .clock { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .qtile .row { display: flex; gap: 6px; }
+  .qtile .row button { flex: 1; }
+</style>
+</head>
+<body>
+<div id="top">
+  <div class="row1">
+    <div id="brand">RWO SCORING</div>
+    <div id="evname"></div>
+    <div id="sync">...</div>
+  </div>
+  <div id="tabs">
+    <button data-v="race" class="on">Race</button>
+    <button data-v="review">Review</button>
+    <button data-v="edit">Edit &amp; Penalties</button>
+    <button data-v="results">Results</button>
+    <button data-v="points">Points</button>
+    <button data-v="qual">Qualifying</button>
+    <button data-v="log">Log</button>
+    <button data-v="settings">Settings</button>
+  </div>
+</div>
+<div id="practice">PRACTICE MODE: nothing here is sent to the Sheet</div>
+<main>
+  <section class="view on" id="v-race"></section>
+  <section class="view" id="v-review"></section>
+  <section class="view" id="v-edit"></section>
+  <section class="view" id="v-results"></section>
+  <section class="view" id="v-points"></section>
+  <section class="view" id="v-qual"></section>
+  <section class="view" id="v-log"></section>
+  <section class="view" id="v-settings"></section>
+</main>
+<div id="modal"><div class="box" id="mbox"></div></div>
+<div id="toast"></div>
+
+<script src="engine.js"></script>
+<script>
+'use strict';
+var VERSION = '3.0.0';
+var LOCK_MS = 30000;
+var COLORS = ['#1a73e8', '#d93025', '#188038', '#e37400', '#8430ce', '#007b83', '#b31412', '#5f6368', '#c26401', '#3949ab', '#00897b', '#6d4c41'];
+var DEMO_CFG = {
+  entries: [
+    { cls: 'Class 1', num: '03', team: 'Demo Racing South' }, { cls: 'Class 1', num: '5', team: 'Demo Five' }, { cls: 'Class 1', num: '11', team: 'Demo Eleven' },
+    { cls: 'Class 1', num: '22', team: 'Demo Heroes' }, { cls: 'Super Vee', num: '5', team: 'Vee Five' }, { cls: 'Super Vee', num: '7', team: 'Vee Seven' },
+    { cls: 'Super Vee', num: '12', team: 'Vee Twelve' }, { cls: 'Modified Vee', num: '42', team: 'Mod Forty-Two' }, { cls: 'Modified Vee', num: '44', team: 'Mod Forty-Four' }
+  ],
+  starts: [
+    { day: 'Sat', race: 1, start: 1, laps: 4, classes: ['Class 1'] },
+    { day: 'Sat', race: 2, start: 1, laps: 3, classes: ['Super Vee'] },
+    { day: 'Sat', race: 2, start: 2, laps: 3, classes: ['Modified Vee'] }
+  ]
+};
+
+/* ================= settings (small, in localStorage) ================= */
+var S = load('rwo_settings') || {};
+if (!S.dev) { S.dev = 'D' + Math.random().toString(36).slice(2, 7).toUpperCase(); }
+S.sort = S.sort || 'num';
+S.view = S.view || 'race';
+save('rwo_settings', S);
+function load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function saveS() { save('rwo_settings', S); }
+function NS() { return S.practice ? 'rwo_practice' : 'rwo_live'; }
+
+/* ================= storage (IndexedDB on the iPad) ================= */
+var DB = null, EVENTS = [], BYID = {}, PENDING = {}, META = { lastRow: 0 };
+function openDB(name) {
+  return new Promise(function (res, rej) {
+    var r = indexedDB.open(name, 1);
+    r.onupgradeneeded = function () { var d = r.result; d.createObjectStore('events', { keyPath: 'id' }); d.createObjectStore('meta'); };
+    r.onsuccess = function () { res(r.result); };
+    r.onerror = function () { rej(r.error); };
+  });
+}
+function tx(store, mode, fn) {
+  return new Promise(function (res, rej) {
+    var t = DB.transaction(store, mode), s = t.objectStore(store), out = fn(s);
+    t.oncomplete = function () { res(out && out.result !== undefined ? out.result : undefined); };
+    t.onerror = function () { rej(t.error); };
+    t.onabort = function () { rej(t.error); };
+  });
+}
+function putEvent(e, synced) { var c = Object.assign({}, e, { _s: synced ? 1 : 0 }); return tx('events', 'readwrite', function (s) { return s.put(c); }); }
+function saveMeta() { return tx('meta', 'readwrite', function (s) { return s.put(META, 'meta'); }); }
+function backupPending() { var list = Object.keys(PENDING).map(function (id) { return BYID[id]; }).filter(Boolean); save(NS() + '_pending', list); }
+
+async function initData() {
+  DB = await openDB(NS());
+  EVENTS = []; BYID = {}; PENDING = {};
+  var all = await tx('events', 'readonly', function (s) { return s.getAll(); });
+  (all || []).forEach(function (e) { var s = e._s; delete e._s; EVENTS.push(e); BYID[e.id] = e; if (!s) PENDING[e.id] = 1; });
+  // safety net: anything that only made it into the localStorage backup
+  (load(NS() + '_pending') || []).forEach(function (e) { if (e && e.id && !BYID[e.id]) { EVENTS.push(e); BYID[e.id] = e; PENDING[e.id] = 1; putEvent(e, false); } });
+  META = (await tx('meta', 'readonly', function (s) { return s.get('meta'); })) || { lastRow: 0 };
+  document.body.classList.toggle('practice', !!S.practice);
+  dirty();
+}
+
+var idn = 0;
+function newId() { return S.dev + '-' + Date.now().toString(36) + '-' + (idn++).toString(36) + Math.random().toString(36).slice(2, 5); }
+
+function addEvent(o) {
+  var e = Object.assign({ id: newId(), at: Date.now(), dev: S.dev, devName: S.devName || S.dev, who: META.who || S.devName || '' }, o);
+  EVENTS.push(e); BYID[e.id] = e;
+  if (!S.practice) PENDING[e.id] = 1;
+  putEvent(e, !!S.practice).catch(function (err) { toast('iPad storage problem: ' + err, 'err'); });
+  if (!S.practice) backupPending();
+  dirty();
+  if (!S.practice) setTimeout(syncNow, 150);
+  return e;
+}
+
+function markSynced(id) {
+  if (!PENDING[id]) return;
+  delete PENDING[id];
+  if (BYID[id]) putEvent(BYID[id], true);
+}
+
+/* ================= sync with the Google Sheet ================= */
+var syncing = false, lastOk = 0, lastErr = '';
+function fetchJson(url, opts) {
+  var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, 45000);
+  return fetch(url, Object.assign({ signal: ctl.signal, redirect: 'follow', cache: 'no-store' }, opts || {}))
+    .then(function (r) { return r.json(); }).finally(function () { clearTimeout(timer); });
+}
+async function syncNow() {
+  if (S.practice || !S.url || !S.pin || syncing) { syncBadge(); return; }
+  syncing = true;
+  try {
+    var pend = Object.keys(PENDING).map(function (id) { return BYID[id]; }).filter(Boolean).slice(0, 300);
+    if (pend.length) {
+      var r = await fetchJson(S.url, { method: 'POST', body: JSON.stringify({ pin: S.pin, events: pend }) });
+      if (r.ok) { r.saved.forEach(markSynced); backupPending(); }
+      else if (!r.retry) lastErr = r.error || 'Sheet refused';
+    }
+    var p = await fetchJson(S.url + '?action=pull&since=' + (META.lastRow || 0) + '&pin=' + encodeURIComponent(S.pin));
+    if (!p.ok) { lastErr = p.error || 'Sheet refused'; }
+    else {
+      if (META.eventId && p.eventId && META.eventId !== p.eventId) { await resetLocal(true); syncing = false; return syncNow(); }
+      var cfgChanged = JSON.stringify(p.cfg) !== JSON.stringify(META.cfg);
+      META.eventId = p.eventId; META.cfg = p.cfg; META.eventName = p.eventName; META.who = p.who; META.lastRow = p.next;
+      META.clockSkew = p.serverTime - Date.now();
+      var added = 0;
+      p.events.forEach(function (ev) {
+        if (!BYID[ev.id]) { EVENTS.push(ev); BYID[ev.id] = ev; putEvent(ev, true); added++; }
+        else if (PENDING[ev.id]) markSynced(ev.id);
+      });
+      await saveMeta();
+      lastOk = Date.now(); lastErr = '';
+      if (added || cfgChanged) dirty();
+    }
+  } catch (err) { lastErr = navigator.onLine === false ? 'No internet' : 'Cannot reach Sheet'; }
+  syncing = false;
+  syncBadge();
+  if (Object.keys(PENDING).length) setTimeout(syncNow, 4000);
+}
+setInterval(syncNow, 5000);
+window.addEventListener('online', syncNow);
+
+async function resetLocal(discardPending) {
+  var keep = discardPending ? [] : Object.keys(PENDING).map(function (id) { return BYID[id]; }).filter(Boolean);
+  await tx('events', 'readwrite', function (s) { return s.clear(); });
+  META = { lastRow: 0 };
+  await saveMeta();
+  EVENTS = []; BYID = {}; PENDING = {};
+  keep.forEach(function (e) { EVENTS.push(e); BYID[e.id] = e; PENDING[e.id] = 1; putEvent(e, false); });
+  backupPending();
+  dirty();
+}
+
+function syncBadge() {
+  var el = document.getElementById('sync'), n = Object.keys(PENDING).length;
+  el.className = '';
+  if (S.practice) { el.textContent = 'Practice'; el.className = 'off'; return; }
+  if (!S.url || !S.pin) { el.textContent = 'Not connected'; el.className = 'err'; return; }
+  if (lastErr) { el.textContent = (lastErr === 'Wrong PIN' ? 'Wrong PIN' : 'Offline') + (n ? ': ' + n + ' waiting' : ''); el.className = lastErr === 'Wrong PIN' ? 'err' : 'off'; return; }
+  el.textContent = n ? 'Sending ' + n + '...' : 'Synced';
+  if (n) el.className = 'off';
+}
+
+/* ================= helpers ================= */
+function cfg() { return S.practice ? DEMO_CFG : (META.cfg || { entries: [], starts: [] }); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function $(id) { return document.getElementById(id); }
+function toast(msg, kind) {
+  var d = document.createElement('div'); d.textContent = msg; if (kind) d.className = kind;
+  $('toast').appendChild(d); setTimeout(function () { d.remove(); }, kind === 'err' ? 4500 : 2200);
+}
+function clock(ms) {
+  if (ms == null || ms < 0) return '0:00.0';
+  var t = Math.floor(ms / 100), ds = t % 10, s = Math.floor(t / 10) % 60, m = Math.floor(t / 600) % 60, h = Math.floor(t / 36000);
+  return (h ? h + ':' + (m < 10 ? '0' : '') : '') + m + ':' + (s < 10 ? '0' : '') + s + '.' + ds;
+}
+function tod(t) {
+  var d = new Date(t), h = d.getHours(), ap = h >= 12 ? 'PM' : 'AM', p2 = function (n) { return String(n).padStart(2, '0'); };
+  return ((h % 12) || 12) + ':' + p2(d.getMinutes()) + ':' + p2(d.getSeconds()) + '.' + p2(Math.floor(d.getMilliseconds() / 10)) + ' ' + ap;
+}
+function parseLap(str) {
+  var m = String(str || '').trim().match(/^(?:(\d+):)?(\d+)(?:\.(\d{1,3}))?$/);
+  if (!m) return null;
+  return ((parseInt(m[1] || '0', 10) * 60) + parseInt(m[2], 10)) * 1000 + (m[3] ? Math.round(parseFloat('0.' + m[3]) * 1000) : 0);
+}
+function classColor(cls) {
+  var list = []; cfg().entries.forEach(function (e) { if (list.indexOf(e.cls) < 0) list.push(e.cls); });
+  return COLORS[Math.max(0, list.indexOf(cls)) % COLORS.length];
+}
+function voided() { return RWO.isVoided(EVENTS); }
+function myRole(race) {
+  var r = EVENTS.filter(function (e) { return e.type === 'role' && Number(e.race) === Number(race) && e.dev === S.dev; }).sort(function (a, b) { return a.at - b.at; }).pop();
+  return r ? r.role : null;
+}
+function devName(id) {
+  if (id === 'EDIT') return 'Edit';
+  var e = EVENTS.filter(function (x) { return x.dev === id && x.devName; })[0];
+  return e ? e.devName : id;
+}
+function races() { return RWO.raceNumbers(cfg()); }
+function raceLabel(r) { var i = RWO.raceInfo(cfg(), r); return 'Race ' + r + ' (' + i.day + '): ' + i.classes.join(', '); }
+function curRace() {
+  var list = races();
+  if (!list.length) return null;
+  if (list.indexOf(Number(S.race)) < 0) { S.race = list[0]; saveS(); }
+  return Number(S.race);
+}
+function raceSelect(id) {
+  var r = curRace();
+  return '<select id="' + id + '">' + races().map(function (n) { return '<option value="' + n + '"' + (n === r ? ' selected' : '') + '>' + esc(raceLabel(n)) + '</option>'; }).join('') + '</select>';
+}
+function bindRaceSelect(id) { var el = $(id); if (el) el.onchange = function () { S.race = Number(el.value); saveS(); dirty(); }; }
+
+var RES = {}, DIRTY = true, RAF = 0;
+function dirty() { DIRTY = true; RES = {}; if (!RAF) RAF = requestAnimationFrame(function () { RAF = 0; render(); }); }
+function result(r) { if (!RES[r]) RES[r] = RWO.computeRace(cfg(), EVENTS, r); return RES[r]; }
+
+/* ================= modal ================= */
+function modal(html, onMount) { $('mbox').innerHTML = html; $('modal').classList.add('on'); if (onMount) onMount($('mbox')); }
+function closeModal() { $('modal').classList.remove('on'); $('mbox').innerHTML = ''; }
+$('modal').addEventListener('click', function (e) { if (e.target.id === 'modal') closeModal(); });
+
+/* ================= tabs ================= */
+document.querySelectorAll('#tabs button').forEach(function (b) {
+  b.onclick = function () { S.view = b.dataset.v; saveS(); render(); };
+});
+function render() {
+  document.querySelectorAll('#tabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === S.view); });
+  document.querySelectorAll('.view').forEach(function (v) { v.classList.toggle('on', v.id === 'v-' + S.view); });
+  $('evname').textContent = S.practice ? 'Practice event' : (META.eventName || '');
+  syncBadge();
+  var r = curRace(), flagsDot = '';
+  if (r != null) { var n = result(r).flags.length; flagsDot = n ? '<span class="dot">' + n + '</span>' : ''; }
+  document.querySelector('#tabs [data-v="review"]').innerHTML = 'Review' + flagsDot;
+  var fn = { race: viewRace, review: viewReview, edit: viewEdit, results: viewResults, points: viewPoints, qual: viewQual, log: viewLog, settings: viewSettings }[S.view];
+  if (S.view !== 'settings' && !cfg().starts.length) { $('v-' + S.view).innerHTML = noConfig(); return; }
+  fn();
+}
+function noConfig() {
+  return '<div class="card"><h3>No races loaded yet</h3><p>Go to <b>Settings</b>, enter the Sheet link and your PIN, and tap <b>Save and connect</b>. ' +
+    'The entry list and schedule come from the ENTRIES and RACE_STARTS tabs in the Sheet.</p><p>Or turn on <b>Practice mode</b> in Settings to try the app with demo boats.</p></div>';
+}
+
+/* ================= RACE (tap screen) ================= */
+var lastTapByMe = {};
+function myLastTap(race, key) {
+  var v = voided(), best = null;
+  EVENTS.forEach(function (e) {
+    if (e.type === 'tap' && e.dev === S.dev && Number(e.race) === race && e.boat === key && !v[e.id] && (!best || e.t > best.t)) best = e;
+  });
+  return best;
+}
+function curSegStartFor(R, group) {
+  var g = R.groups.filter(function (x) { return x.group === group; })[0];
+  if (!g) return null;
+  if (R.status === 'RED FLAG') return null;
+  var lastRf = R.redflags.length ? R.redflags[R.redflags.length - 1].t : -Infinity;
+  return g.startT != null && g.startT > lastRf ? g.startT : null;
+}
+
+var MYTAPS = null;
+function viewRace() {
+  var race = curRace(), R = result(race), role = myRole(race), v = voided();
+  MYTAPS = {};
+  EVENTS.forEach(function (e) {
+    if (e.type === 'tap' && e.dev === S.dev && Number(e.race) === race && !v[e.id] && (!MYTAPS[e.boat] || e.t > MYTAPS[e.boat].t)) MYTAPS[e.boat] = e;
+  });
+  var h = '<div class="bar">' + raceSelect('raceSel') +
+    '<div class="seg" id="roleSeg"><button data-r="main" class="' + (role === 'main' ? 'on' : '') + '">Main</button><button data-r="b1" class="' + (role === 'b1' ? 'on' : '') + '">Backup 1</button><button data-r="b2" class="' + (role === 'b2' ? 'on' : '') + '">Backup 2</button></div>' +
+    '<div class="seg" id="sortSeg"><button data-s="num" class="' + (S.sort === 'num' ? 'on' : '') + '">By number</button><button data-s="run" class="' + (S.sort === 'run' ? 'on' : '') + '">Running order</button></div>' +
+    '<span class="spacer"></span>' +
+    (R.status === 'ENDED' ? '<button class="btn gray" id="reopenBtn">Reopen race</button>' :
+      '<button class="btn red" id="rfBtn">RED FLAG</button><button class="btn gray" id="endBtn">End race</button>') + '</div>';
+  if (!role) h += '<div class="banner info">Pick this iPad\'s job for this race: Main, Backup 1 or Backup 2.</div>';
+  if (R.status === 'RED FLAG') h += '<div class="banner red">RED FLAG. Taps are paused. When racing resumes, tap START for each start below.</div>';
+  if (R.status === 'ENDED') h += '<div class="banner done">Race ended' + (R.calledAt ? ' (called at the red flag)' : '') + '. Check the Review tab, then make it official on the Results tab.' + (R.official ? ' This race is OFFICIAL.' : '') + '</div>';
+
+  h += '<div class="starts">';
+  R.groups.forEach(function (g) {
+    var st = curSegStartFor(R, g.group), label = g.classes.map(function (c, i) { return esc(c) + ' (' + g.laps[i] + ' laps)'; }).join(', ');
+    var restart = R.segment > 0 && R.status !== 'ENDED';
+    h += '<div class="start"><div class="lbl"><b>Start ' + g.group + (restart ? ' (restart ' + R.segment + ')' : '') + '</b>' + label + '</div>';
+    if (st != null) h += '<div class="clock" data-clock="' + st + '">' + clock(Date.now() - st) + '</div><button class="btn gray small" data-unstart="' + g.group + '">Undo start</button>';
+    else if (R.status !== 'ENDED') h += '<button class="btn green go" data-start="' + g.group + '">START</button>';
+    else h += '<div class="clock">Done</div>';
+    h += '</div>';
+  });
+  h += '</div>';
+
+  R.classes.forEach(function (C) {
+    var rows = C.rows.slice();
+    if (S.sort === 'num') rows.sort(function (a, b) { return RWO.numSort(a.num, b.num); });
+    h += '<div class="clshead"><i style="background:' + classColor(C.cls) + '"></i>' + esc(C.cls) + ' &middot; ' + C.laps + ' laps</div><div class="grid">';
+    rows.forEach(function (b) {
+      var mine = MYTAPS[b.key], now = Date.now();
+      var locked = mine && now - mine.t < LOCK_MS;
+      var out = ['DNS', 'DNF', 'DQ', 'LAPS DOWN'].indexOf(b.status) >= 0;
+      var cls = b.status === 'FINISHED' ? 'finished' : out ? 'out' : locked ? 'tapped' : '';
+      h += '<div class="tile ' + cls + '" data-boat="' + esc(b.key) + '">' +
+        '<div class="band" style="background:' + classColor(b.cls) + '">' + esc(b.cls) + '</div>' +
+        '<div class="num">' + esc(b.num) + '</div><div class="team">' + esc(b.team) + '</div>' +
+        '<div class="laps">' + b.laps + ' / ' + b.target + '</div>' +
+        '<div class="last">' + (b.status === 'FINISHED' ? '<span class="stat">FINISHED</span>' : out ? '<span class="stat">' + b.status + '</span>' : (b.lastLapStr || '&nbsp;')) + '</div>' +
+        (locked && b.status !== 'FINISHED' ? '<div class="big"><span class="bn">' + esc(b.num) + '</span>TAPPED<small data-lock="' + mine.t + '">' + Math.ceil((LOCK_MS - (now - mine.t)) / 1000) + 's</small></div>' : '') +
+        '<button class="undo" data-undo="' + esc(b.key) + '">Undo</button></div>';
+    });
+    h += '</div>';
+  });
+  var el = $('v-race');
+  el.innerHTML = h;
+  bindRaceSelect('raceSel');
+  el.querySelectorAll('#roleSeg button').forEach(function (b) {
+    b.onclick = function () { addEvent({ type: 'role', race: race, role: b.dataset.r }); toast('This iPad is ' + b.textContent + ' for race ' + race, 'ok'); };
+  });
+  el.querySelectorAll('#sortSeg button').forEach(function (b) { b.onclick = function () { S.sort = b.dataset.s; saveS(); dirty(); }; });
+  el.querySelectorAll('[data-start]').forEach(function (b) {
+    b.addEventListener('pointerdown', function (ev) {
+      ev.preventDefault();
+      var t = Date.now(), g = Number(b.dataset.start);
+      addEvent({ type: 'start', race: race, group: g, t: t });
+      if (S.practice && S.robots) ['ROBOT-1', 'ROBOT-2'].forEach(function (d, i) { addEvent({ type: 'start', race: race, group: g, t: t + 150 + i * 120, dev: d, devName: 'Robot ' + (i + 1) }); });
+      if (!myRole(race)) addEvent({ type: 'role', race: race, role: 'main' });
+      wakeLock();
+      toast('Start ' + g + ' started', 'ok');
+    });
+  });
+  el.querySelectorAll('[data-unstart]').forEach(function (b) {
+    b.onclick = function () {
+      var g = Number(b.dataset.unstart), v2 = voided(), R2 = result(race), lastRf = R2.redflags.length ? R2.redflags[R2.redflags.length - 1].t : -Infinity;
+      var mine = EVENTS.filter(function (e) { return e.type === 'start' && Number(e.race) === race && Number(e.group) === g && !v2[e.id] && e.t > lastRf; });
+      if (!mine.length) return;
+      if (!confirm('Undo the START for start ' + g + '? Use this only if START was tapped by mistake.')) return;
+      mine.forEach(function (e) { addEvent({ type: 'void', target: e.id, race: race, reason: 'Undo start' }); });
+    };
+  });
+  el.querySelectorAll('.tile').forEach(function (t) {
+    t.addEventListener('pointerdown', function (ev) {
+      if (ev.target.closest('.undo')) return;
+      ev.preventDefault();
+      tapBoat(race, t.dataset.boat, t);
+    });
+  });
+  el.querySelectorAll('[data-undo]').forEach(function (b) {
+    b.addEventListener('click', function (ev) { ev.stopPropagation(); undoBoat(race, b.dataset.undo); });
+  });
+  var rf = $('rfBtn'); if (rf) rf.onclick = function () { redFlag(race); };
+  var en = $('endBtn'); if (en) en.onclick = function () { endRace(race); };
+  var ro = $('reopenBtn'); if (ro) ro.onclick = function () {
+    if (!confirm('Reopen this race for more taps?')) return;
+    var v2 = voided();
+    EVENTS.filter(function (e) { return e.type === 'end' && Number(e.race) === race && !v2[e.id]; }).forEach(function (e) { addEvent({ type: 'void', target: e.id, race: race, reason: 'Reopen race' }); });
+    var lastRf = result(race).redflags.slice(-1)[0];
+    if (lastRf && lastRf.mode === 'called') EVENTS.filter(function (e) { return e.type === 'redflag' && Number(e.race) === race && !v2[e.id] && e.mode === 'called'; }).forEach(function (e) { addEvent({ type: 'void', target: e.id, race: race, reason: 'Reopen race' }); });
+  };
+}
+
+function tapBoat(race, key, tileEl) {
+  var t = Date.now(), R = result(race);
+  var row = null; R.classes.forEach(function (C) { C.rows.forEach(function (r) { if (r.key === key) row = r; }); });
+  if (!row) return;
+  if (R.status === 'ENDED') { toast('Race has ended. Reopen it to tap.', 'err'); return; }
+  if (R.status === 'RED FLAG') { toast('Red flag: tap START when racing resumes', 'err'); return; }
+  if (curSegStartFor(R, row.group) == null) { toast('Tap START for start ' + row.group + ' first', 'err'); return; }
+  if (row.status === 'FINISHED') return;
+  if (['DNS', 'DNF', 'DQ'].indexOf(row.status) >= 0) { toast('#' + row.num + ' is ' + row.status, 'err'); return; }
+  var mine = myLastTap(race, key);
+  if (mine && t - mine.t < LOCK_MS) return; // 30 second lock: ignore double taps
+  addEvent({ type: 'tap', race: race, boat: key, t: t });
+  if (S.practice && S.robots) robotTaps(race, key, t);
+  if (tileEl) tileEl.classList.add('flash');
+}
+
+function robotTaps(race, key, t) {
+  ['ROBOT-1', 'ROBOT-2'].forEach(function (d, i) {
+    if (Math.random() < 0.1) return; // robots miss 10% of laps
+    var off = 120 + Math.round(Math.random() * 500) + (Math.random() < 0.08 ? 1800 : 0);
+    addEvent({ type: 'tap', race: race, boat: key, t: t + off, dev: d, devName: 'Robot ' + (i + 1) });
+  });
+}
+
+function undoBoat(race, key) {
+  var mine = myLastTap(race, key), b = RWO.splitKey(key);
+  if (!mine) { toast('No tap from this iPad to undo on #' + b.num, 'err'); return; }
+  addEvent({ type: 'void', target: mine.id, race: race, reason: 'Undo' });
+  toast('Undid last tap on #' + b.num + ' (' + b.cls + ')', 'ok');
+}
+
+function endRace(race) {
+  if (myRole(race) !== 'main' && !confirm('This iPad is not the Main iPad. Only the Main iPad should end the race. Continue?')) return;
+  if (!confirm('End race ' + race + '? Boats still on course will be marked LAPS DOWN.')) return;
+  addEvent({ type: 'end', race: race, t: Date.now() });
+}
+
+function redFlag(race) {
+  var t = Date.now(), R = result(race);
+  if (myRole(race) !== 'main' && !confirm('This iPad is not the Main iPad. Usually only the Main iPad calls the red flag. Continue?')) return;
+  var mode = 'running', inputMode = 'left';
+  var info = R.classes.map(function (C) {
+    var lead = 0; C.rows.forEach(function (r) { var n = r.lapList.filter(function (l) { return l.t < t; }).length; if (n > lead) lead = n; });
+    return { cls: C.cls, laps: C.laps, lead: lead };
+  });
+  function draw() {
+    var h = '<h2 style="color:var(--red)">RED FLAG at ' + tod(t) + '</h2>' +
+      '<button class="opt ' + (mode === 'running' ? 'on' : '') + '" data-m="running"><b>Restart in running order</b>Laps already completed are kept. The lap in progress is dropped.</button>' +
+      '<button class="opt ' + (mode === 'original' ? 'on' : '') + '" data-m="original"><b>Restart in original order</b>For a red flag before lap 1 is finished. All laps so far are voided (kept in the log).</button>' +
+      '<button class="opt ' + (mode === 'called' ? 'on' : '') + '" data-m="called"><b>Call the race (no restart)</b>Each class is scored at the last lap its leader completed.</button>';
+    if (mode === 'running') {
+      h += '<div class="seg" style="margin:8px 0"><button data-im="left" class="' + (inputMode === 'left' ? 'on' : '') + '">Enter laps left</button><button data-im="total" class="' + (inputMode === 'total' ? 'on' : '') + '">Enter new total</button></div>';
+      info.forEach(function (c, i) {
+        var def = inputMode === 'left' ? Math.max(0, c.laps - c.lead) : c.laps;
+        h += '<label class="f">' + esc(c.cls) + ': leader has ' + c.lead + ' of ' + c.laps + ' laps. ' + (inputMode === 'left' ? 'Laps left after restart:' : 'New total laps:') + '</label>' +
+          '<input class="f" type="number" inputmode="numeric" min="0" data-i="' + i + '" value="' + def + '"><div class="muted" id="rfnote' + i + '"></div>';
+      });
+    } else if (mode === 'original') {
+      info.forEach(function (c, i) {
+        h += '<label class="f">' + esc(c.cls) + ': new total laps</label><input class="f" type="number" inputmode="numeric" min="1" data-i="' + i + '" value="' + c.laps + '">';
+      });
+    }
+    h += '<div class="bar" style="margin-top:16px"><button class="btn red" id="rfOk">Confirm red flag</button><button class="btn gray" id="rfCancel">Cancel</button></div>';
+    $('mbox').innerHTML = h;
+    var box = $('mbox');
+    box.querySelectorAll('[data-m]').forEach(function (b) { b.onclick = function () { mode = b.dataset.m; draw(); }; });
+    box.querySelectorAll('[data-im]').forEach(function (b) { b.onclick = function () { inputMode = b.dataset.im; draw(); }; });
+    function notes() {
+      if (mode !== 'running') return;
+      box.querySelectorAll('[data-i]').forEach(function (inp) {
+        var c = info[inp.dataset.i], v = parseInt(inp.value, 10) || 0;
+        $('rfnote' + inp.dataset.i).textContent = inputMode === 'left' ? 'Race becomes ' + (c.lead + v) + ' laps total.' : (v - c.lead) + ' laps left after the restart.';
+      });
+    }
+    box.querySelectorAll('[data-i]').forEach(function (inp) { inp.oninput = notes; }); notes();
+    $('rfCancel').onclick = closeModal;
+    $('rfOk').onclick = function () {
+      var laps = {};
+      box.querySelectorAll('[data-i]').forEach(function (inp) {
+        var c = info[inp.dataset.i], v = parseInt(inp.value, 10) || 0;
+        laps[c.cls] = mode === 'running' && inputMode === 'left' ? c.lead + v : v;
+      });
+      addEvent({ type: 'redflag', race: race, t: t, mode: mode, laps: mode === 'called' ? null : laps });
+      closeModal();
+      toast(mode === 'called' ? 'Race called' : 'Red flag recorded. Tap START when racing resumes.', 'ok');
+    };
+  }
+  modal('', draw);
+}
+
+/* live clocks + tapped countdowns */
+setInterval(function () {
+  if (S.view === 'race') {
+    var now = Date.now(), expired = false;
+    document.querySelectorAll('[data-clock]').forEach(function (c) { c.textContent = clock(now - Number(c.dataset.clock)); });
+    document.querySelectorAll('[data-lock]').forEach(function (c) {
+      var left = LOCK_MS - (now - Number(c.dataset.lock));
+      if (left <= 0) expired = true; else c.textContent = Math.ceil(left / 1000) + 's';
+    });
+    if (expired) dirty();
+  }
+  if (S.view === 'qual') document.querySelectorAll('[data-qclock]').forEach(function (c) { c.textContent = clock(Date.now() - Number(c.dataset.qclock)); });
+}, 200);
+
+var WL = null;
+function wakeLock() { try { if (navigator.wakeLock && !WL) navigator.wakeLock.request('screen').then(function (l) { WL = l; l.addEventListener('release', function () { WL = null; }); }); } catch (e) {} }
+document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { dirty(); syncNow(); } });
+
+/* ================= REVIEW ================= */
+function viewReview() {
+  var race = curRace(), R = result(race);
+  var h = '<div class="bar">' + raceSelect('rvSel') + '</div>';
+  if (R.devices.length < 2) h += '<div class="card muted">Only one iPad has tapped this race, so there is nothing to compare.</div>';
+  if (!R.flags.length) h += '<div class="card"><h3>No flags. All iPads agree.</h3>' + (R.status === 'ENDED' && !R.official ? '<p>Next: go to Results and tap Make Official.</p>' : '') + '</div>';
+  var why = { filled: 'Main iPad missed this lap. Filled in from the backup iPad.', mainonly: 'Only the Main iPad tapped this lap. Possible wrong boat.', disagree: 'The iPads disagree by more than 1 second.' };
+  R.flags.forEach(function (f, i) {
+    var taps = f.taps.slice().sort(function (a, b) { return a.t - b.t; });
+    h += '<div class="card flag"><h3>#' + esc(f.num) + ' ' + esc(f.cls) + ' &middot; Lap ' + f.lap + '</h3><p>' + why[f.flag] + '</p><table><tr><th>iPad</th><th>Crossed line at</th></tr>' +
+      taps.map(function (t) { return '<tr><td>' + esc(devName(t.dev)) + (t.dev === R.main ? ' (Main)' : '') + '</td><td>' + tod(t.t) + '</td></tr>'; }).join('') +
+      '</table><div class="bar" style="margin-top:10px"><button class="btn green small" data-ack="' + i + '">OK, keep it</button>' +
+      taps.map(function (t) { return '<button class="btn small" data-use="' + i + '|' + t.id + '">Use ' + esc(devName(t.dev)) + ' time</button>'; }).join('') +
+      '<button class="btn red small" data-rm="' + i + '">Not a lap: remove</button></div></div>';
+  });
+  var el = $('v-review'); el.innerHTML = h; bindRaceSelect('rvSel');
+  el.querySelectorAll('[data-ack]').forEach(function (b) { b.onclick = function () { var f = R.flags[b.dataset.ack]; addEvent({ type: 'ack', race: race, boat: f.boat, flag: f.fkey }); }; });
+  el.querySelectorAll('[data-use]').forEach(function (b) {
+    b.onclick = function () {
+      var p = b.dataset.use.split('|'), f = R.flags[p[0]], tap = BYID[p[1]];
+      addEvent({ type: 'tap', race: race, boat: f.boat, t: tap.t, dev: 'EDIT', devName: 'Edit' });
+    };
+  });
+  el.querySelectorAll('[data-rm]').forEach(function (b) {
+    b.onclick = function () {
+      var f = R.flags[b.dataset.rm];
+      if (!confirm('Remove lap ' + f.lap + ' for #' + f.num + '? All iPad taps for this crossing will be undone.')) return;
+      f.taps.forEach(function (t) { addEvent({ type: 'void', target: t.id, race: race, reason: 'Removed in review' }); });
+    };
+  });
+}
+
+/* ================= EDIT & PENALTIES ================= */
+function boatsIn(R) { var out = []; R.classes.forEach(function (C) { C.rows.forEach(function (r) { out.push(r); }); }); return out.sort(function (a, b) { return a.cls.localeCompare(b.cls) || RWO.numSort(a.num, b.num); }); }
+
+function viewEdit() {
+  var race = curRace(), R = result(race), all = boatsIn(R), v = voided();
+  if (!S.editBoat || !all.some(function (b) { return b.key === S.editBoat; })) S.editBoat = all[0] ? all[0].key : '';
+  var b = all.filter(function (x) { return x.key === S.editBoat; })[0];
+  var h = '<div class="bar">' + raceSelect('edSel') + '<select id="edBoat">' + all.map(function (x) {
+    return '<option value="' + esc(x.key) + '"' + (x.key === S.editBoat ? ' selected' : '') + '>#' + esc(x.num) + ' ' + esc(x.cls) + ' - ' + esc(x.team) + '</option>';
+  }).join('') + '</select></div>';
+  if (b) {
+    h += '<div class="card"><h3>#' + esc(b.num) + ' ' + esc(b.cls) + ' &middot; ' + esc(b.team) + '</h3><p>Status: <b>' + b.status + '</b> &middot; Position: <b>' + (b.posLabel || '-') + '</b> &middot; Laps ' + b.laps + ' / ' + b.target + ' &middot; APBA ' + b.apba + (b.uim != null ? ' &middot; UIM ' + b.uim : '') + '</p>' +
+      '<div class="bar"><b>Set status:</b>' + ['RACING', 'DNS', 'DNF', 'DQ'].map(function (s) { return '<button class="btn small ' + (s === 'RACING' ? 'gray' : 'amber') + '" data-st="' + s + '">' + (s === 'RACING' ? 'Clear status' : s) + '</button>'; }).join('') + '</div></div>';
+
+    // penalties
+    h += '<div class="card"><h3>Penalties</h3>';
+    if (b.penalties.length) {
+      h += '<table><tr><th>Penalty</th><th>Amount</th><th>Reason</th><th>By</th><th></th></tr>' + b.penalties.map(function (p) {
+        return '<tr><td>' + esc(p.ptype === 'custom' ? p.label || 'Other' : RWO.PEN_TYPES[p.ptype]) + '</td><td>' + (p.amount || '') + '</td><td class="wrap">' + esc(p.reason) + '</td><td>' + esc(p.who) + '</td><td><button class="btn red small" data-rmpen="' + p.id + '">Remove</button></td></tr>';
+      }).join('') + '</table>';
+    } else h += '<p class="muted">No penalties.</p>';
+    h += '<div class="two"><div><label class="f">Penalty type</label><select class="f" id="pType">' + Object.keys(RWO.PEN_TYPES).map(function (k) { return '<option value="' + k + '">' + RWO.PEN_TYPES[k] + '</option>'; }).join('') + '</select></div>' +
+      '<div id="pAmtWrap"><label class="f" id="pAmtLbl">Amount</label><input class="f" id="pAmt" type="number" inputmode="decimal" min="0"></div></div>' +
+      '<div id="pCustom" style="display:none" class="two"><div><label class="f">Name of penalty</label><input class="f" id="pLabel" placeholder="e.g. Unsafe re-entry"></div><div><label class="f">What it does</label><select class="f" id="pEffect"><option value="warning">Nothing (note only)</option><option value="time">Adds seconds</option><option value="laps">Takes away laps</option><option value="points">Takes away points</option><option value="drop">Drops positions</option></select></div></div>' +
+      '<label class="f">Reason (shown publicly)</label><input class="f" id="pReason" placeholder="e.g. Missed turn buoy 3">' +
+      '<div class="bar" style="margin-top:10px"><button class="btn red" id="pAdd">Add penalty</button></div></div>';
+
+    // laps
+    h += '<div class="card"><h3>Laps</h3><table><tr><th>Lap</th><th>Crossed at</th><th>Lap time</th><th>Source</th><th></th></tr>';
+    b.lapList.forEach(function (l, i) {
+      var src = l.taps.some(function (t) { return t.dev === 'EDIT'; }) ? 'Edited' : l.flag === 'filled' ? 'Backup fill' : l.taps.map(function (t) { return devName(t.dev); }).join(', ');
+      h += '<tr><td>' + (i + 1) + '</td><td>' + tod(l.t) + '</td><td>' + RWO.fmt(l.dur) + '</td><td class="wrap">' + esc(src) + '</td><td>' +
+        '<button class="btn small" data-chg="' + i + '">Change time</button> <button class="btn small gray" data-mv="' + i + '">Move to boat</button> <button class="btn small red" data-del="' + i + '">Delete</button></td></tr>';
+    });
+    if (!b.lapList.length) h += '<tr><td colspan="5" class="muted">No laps yet.</td></tr>';
+    h += '</table><div class="bar" style="margin-top:10px"><button class="btn" id="addLap">Add a missed lap</button></div></div>';
+  }
+  // race setup
+  h += '<div class="card"><h3>Race ' + race + ' setup</h3>';
+  R.classes.forEach(function (C, i) {
+    h += '<div class="bar"><b style="min-width:160px">' + esc(C.cls) + '</b> laps <input class="f" style="width:110px" type="number" inputmode="numeric" min="1" id="cl' + i + '" value="' + C.laps + '"><button class="btn small" data-setlaps="' + i + '">Save laps</button></div>';
+  });
+  h += '<div class="bar"><button class="btn small" id="addBoat">Add a boat</button>' + (b ? '<button class="btn small gray" id="moveBoat">Move #' + esc(b.num) + ' to another class</button><button class="btn small red" id="delBoat">Remove #' + esc(b.num) + ' from this race</button>' : '') + '</div></div>';
+
+  var el = $('v-edit'); el.innerHTML = h; bindRaceSelect('edSel');
+  $('edBoat') && ($('edBoat').onchange = function () { S.editBoat = this.value; saveS(); dirty(); });
+  if (b) {
+    el.querySelectorAll('[data-st]').forEach(function (x) { x.onclick = function () { addEvent({ type: 'status', race: race, boat: b.key, status: x.dataset.st }); toast('#' + b.num + ' ' + (x.dataset.st === 'RACING' ? 'status cleared' : x.dataset.st), 'ok'); }; });
+    el.querySelectorAll('[data-rmpen]').forEach(function (x) { x.onclick = function () { if (confirm('Remove this penalty?')) addEvent({ type: 'void', target: x.dataset.rmpen, race: race, reason: 'Penalty removed' }); }; });
+    var pt = $('pType');
+    function pUi() {
+      var t = pt.value, needs = { time: 'Seconds to add', laps: 'Laps to take away', drop: 'Places to drop', points: 'Points to take away' };
+      var eff = t === 'custom' ? $('pEffect').value : t;
+      $('pCustom').style.display = t === 'custom' ? 'grid' : 'none';
+      $('pAmtWrap').style.display = needs[eff] ? 'block' : 'none';
+      $('pAmtLbl').textContent = needs[eff] || '';
+    }
+    pt.onchange = pUi; $('pEffect').onchange = pUi; pUi();
+    $('pAdd').onclick = function () {
+      var t = pt.value, eff = t === 'custom' ? $('pEffect').value : t, amt = parseFloat($('pAmt').value) || 0;
+      if (['time', 'laps', 'drop', 'points'].indexOf(eff) >= 0 && !amt) { toast('Enter the amount', 'err'); return; }
+      if (t === 'custom' && !$('pLabel').value.trim()) { toast('Give the penalty a name', 'err'); return; }
+      addEvent({ type: 'penalty', race: race, boat: b.key, ptype: t, effect: t === 'custom' ? eff : undefined, amount: amt, label: $('pLabel').value.trim(), reason: $('pReason').value.trim() });
+      toast('Penalty added to #' + b.num, 'ok');
+    };
+    el.querySelectorAll('[data-del]').forEach(function (x) {
+      x.onclick = function () {
+        var l = b.lapList[x.dataset.del];
+        if (!confirm('Delete lap ' + (Number(x.dataset.del) + 1) + ' for #' + b.num + '? Taps from every iPad for this crossing are undone.')) return;
+        l.taps.forEach(function (t) { addEvent({ type: 'void', target: t.id, race: race, reason: 'Lap deleted' }); });
+      };
+    });
+    el.querySelectorAll('[data-chg]').forEach(function (x) {
+      x.onclick = function () {
+        var i = Number(x.dataset.chg), l = b.lapList[i], prevT = l.t - l.dur;
+        var val = prompt('New lap time for lap ' + (i + 1) + ' (minutes:seconds, e.g. 1:42.35). Currently ' + RWO.fmt(l.dur) + '.', RWO.fmt(l.dur));
+        if (val == null) return;
+        var ms = parseLap(val);
+        if (!ms || ms < RWO.MIN_LAP_MS) { toast('That is not a valid lap time (minimum 0:30)', 'err'); return; }
+        l.taps.forEach(function (t) { addEvent({ type: 'void', target: t.id, race: race, reason: 'Lap time changed' }); });
+        addEvent({ type: 'tap', race: race, boat: b.key, t: prevT + ms, dev: 'EDIT', devName: 'Edit' });
+      };
+    });
+    el.querySelectorAll('[data-mv]').forEach(function (x) {
+      x.onclick = function () {
+        var l = b.lapList[x.dataset.mv], others = all.filter(function (o) { return o.key !== b.key; });
+        modal('<h2>Move this lap to another boat</h2><p>Crossed at ' + tod(l.t) + '</p><select class="f" id="mvTo">' + others.map(function (o) { return '<option value="' + esc(o.key) + '">#' + esc(o.num) + ' ' + esc(o.cls) + ' - ' + esc(o.team) + '</option>'; }).join('') +
+          '</select><div class="bar" style="margin-top:12px"><button class="btn" id="mvOk">Move lap</button><button class="btn gray" id="mvNo">Cancel</button></div>', function () {
+          $('mvNo').onclick = closeModal;
+          $('mvOk').onclick = function () {
+            var to = $('mvTo').value;
+            l.taps.forEach(function (t) { addEvent({ type: 'void', target: t.id, race: race, reason: 'Lap moved to another boat' }); });
+            addEvent({ type: 'tap', race: race, boat: to, t: l.t, dev: 'EDIT', devName: 'Edit' });
+            closeModal(); toast('Lap moved', 'ok');
+          };
+        });
+      };
+    });
+    $('addLap').onclick = function () {
+      var opts = '<option value="0">Lap 1 (first lap)</option>' + b.lapList.map(function (l, i) { return '<option value="' + (i + 1) + '">After lap ' + (i + 1) + '</option>'; }).join('');
+      modal('<h2>Add a missed lap for #' + esc(b.num) + '</h2><label class="f">Where does it go?</label><select class="f" id="alPos">' + opts + '</select>' +
+        '<label class="f">Lap time (minutes:seconds, e.g. 1:42.35)</label><input class="f" id="alTime" placeholder="1:42.35">' +
+        '<div class="bar" style="margin-top:12px"><button class="btn" id="alOk">Add lap</button><button class="btn gray" id="alNo">Cancel</button></div>', function () {
+        $('alPos').value = String(b.lapList.length);
+        $('alNo').onclick = closeModal;
+        $('alOk').onclick = function () {
+          var pos = Number($('alPos').value), ms = parseLap($('alTime').value);
+          if (!ms || ms < RWO.MIN_LAP_MS) { toast('Enter a lap time of at least 0:30', 'err'); return; }
+          var base = pos === 0 ? (b.lapList[0] ? b.lapList[0].segT0 : curSegStartFor(R, b.group)) : b.lapList[pos - 1].t;
+          if (base == null) { toast('This boat\'s start has not been tapped', 'err'); return; }
+          var nt = base + ms, next = b.lapList[pos];
+          if (next && nt >= next.t - RWO.MIN_LAP_MS) { toast('That lap time is too long to fit before the next lap', 'err'); return; }
+          addEvent({ type: 'tap', race: race, boat: b.key, t: nt, dev: 'EDIT', devName: 'Edit' });
+          closeModal(); toast('Lap added', 'ok');
+        };
+      });
+    };
+    $('moveBoat').onclick = function () {
+      var list = []; cfg().entries.forEach(function (e) { if (list.indexOf(e.cls) < 0 && e.cls !== b.cls) list.push(e.cls); });
+      R.classes.forEach(function (C) { if (list.indexOf(C.cls) < 0 && C.cls !== b.cls) list.push(C.cls); });
+      modal('<h2>Move #' + esc(b.num) + ' to another class</h2><select class="f" id="mbTo">' + list.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('') +
+        '</select><p class="muted">Its laps move with it. The class must race in this race.</p><div class="bar"><button class="btn" id="mbOk">Move</button><button class="btn gray" id="mbNo">Cancel</button></div>', function () {
+        $('mbNo').onclick = closeModal;
+        $('mbOk').onclick = function () { addEvent({ type: 'boatmove', race: race, boat: b.key, toCls: $('mbTo').value }); S.editBoat = RWO.key($('mbTo').value, b.num); saveS(); closeModal(); };
+      });
+    };
+    $('delBoat').onclick = function () { if (confirm('Remove #' + b.num + ' (' + b.cls + ') from race ' + race + '? Its taps are kept in the log.')) addEvent({ type: 'boatdel', race: race, boat: b.key }); };
+  }
+  el.querySelectorAll('[data-setlaps]').forEach(function (x) {
+    x.onclick = function () {
+      var C = R.classes[x.dataset.setlaps], v = parseInt($('cl' + x.dataset.setlaps).value, 10);
+      if (!v || v < 1) { toast('Enter a lap count', 'err'); return; }
+      addEvent({ type: 'laps', race: race, cls: C.cls, laps: v }); toast(C.cls + ' is now ' + v + ' laps', 'ok');
+    };
+  });
+  $('addBoat').onclick = function () {
+    modal('<h2>Add a boat to race ' + race + '</h2><label class="f">Class</label><select class="f" id="abCls">' + R.classes.map(function (C) { return '<option>' + esc(C.cls) + '</option>'; }).join('') + '</select>' +
+      '<div class="two"><div><label class="f">Boat #</label><input class="f" id="abNum"></div><div><label class="f">Team name</label><input class="f" id="abTeam"></div></div>' +
+      '<p class="muted">Also add the boat to the ENTRIES tab so it shows in every race and in points.</p><div class="bar"><button class="btn" id="abOk">Add boat</button><button class="btn gray" id="abNo">Cancel</button></div>', function () {
+      $('abNo').onclick = closeModal;
+      $('abOk').onclick = function () {
+        var n = $('abNum').value.trim(); if (!n) { toast('Enter the boat number', 'err'); return; }
+        addEvent({ type: 'boatadd', race: race, cls: $('abCls').value, num: n, team: $('abTeam').value.trim() }); closeModal();
+      };
+    });
+  };
+}
+
+/* ================= RESULTS ================= */
+function viewResults() {
+  var race = curRace(), R = result(race);
+  var h = '<div class="bar">' + raceSelect('rsSel') + '<span class="pill ' + (R.official ? 'green' : 'amber') + '">' + (R.official ? 'OFFICIAL' : 'WORKING') + '</span><span class="pill">' + R.status + '</span><span class="spacer"></span>' +
+    (R.official ? '<button class="btn amber" id="unlockBtn">Unlock to edit</button>' : '<button class="btn green" id="offBtn">Make Official</button>') + '</div>';
+  R.classes.forEach(function (C) {
+    var maxL = C.laps; C.rows.forEach(function (r) { if (r.laps > maxL) maxL = r.laps; });
+    h += '<div class="card"><h3>' + esc(C.cls) + ' &middot; ' + C.laps + ' laps' + (C.uim ? ' &middot; UIM + APBA' : '') + '</h3><div class="scroll"><table><tr><th>Pos</th><th>Boat</th><th>Team</th><th>Laps</th><th>Status</th><th>Total</th><th>Pen</th><th>Adj time</th><th>Gap</th><th>APBA</th>' + (C.uim ? '<th>UIM</th>' : '');
+    for (var i = 1; i <= maxL; i++) h += '<th>L' + i + '</th>';
+    h += '</tr>';
+    C.rows.forEach(function (r) {
+      h += '<tr><td><b>' + esc(r.posLabel) + '</b></td><td><b>' + esc(r.num) + '</b></td><td class="wrap">' + esc(r.team) + (r.penalties.length ? '<div class="pill red">' + r.penalties.length + ' penalty</div>' : '') + '</td><td>' + r.laps + '</td><td>' + r.status + '</td><td>' + r.totalStr + '</td><td>' + (r.penSecs ? '+' + r.penSecs + 's' : '') + (r.penLaps ? ' -' + r.penLaps + 'L' : '') + '</td><td>' + r.adjStr + '</td><td>' + r.gap + '</td><td>' + r.apba + '</td>' + (C.uim ? '<td>' + r.uim + '</td>' : '');
+      for (var j = 0; j < maxL; j++) h += '<td>' + (r.times[j] != null ? RWO.fmt(r.times[j]) : '') + '</td>';
+      h += '</tr>';
+    });
+    h += '</table></div></div>';
+  });
+  var el = $('v-results'); el.innerHTML = h; bindRaceSelect('rsSel');
+  var ob = $('offBtn');
+  if (ob) ob.onclick = function () {
+    if (R.status !== 'ENDED') { toast('End the race first (Race tab)', 'err'); return; }
+    if (R.flags.length) { toast('Clear the ' + R.flags.length + ' review flag(s) first (Review tab)', 'err'); S.view = 'review'; saveS(); render(); return; }
+    if (!confirm('Make race ' + race + ' OFFICIAL? Points will be added to the official points totals.')) return;
+    addEvent({ type: 'official', race: race }); toast('Race ' + race + ' is official', 'ok');
+  };
+  var ub = $('unlockBtn');
+  if (ub) ub.onclick = function () { if (confirm('Unlock race ' + race + ' for changes? It goes back to WORKING until you make it official again.')) addEvent({ type: 'unlock', race: race }); };
+}
+
+/* ================= POINTS ================= */
+function viewPoints() {
+  var off = !!S.ptsOfficial, st = RWO.computeStandings(cfg(), EVENTS, off);
+  var h = '<div class="bar"><div class="seg" id="ptsSeg"><button data-o="0" class="' + (!off ? 'on' : '') + '">Working</button><button data-o="1" class="' + (off ? 'on' : '') + '">Official only</button></div><span class="muted">Bonus = boats beaten for the weekend, added after the class\'s last race.</span></div>';
+  st.forEach(function (C, ci) {
+    h += '<div class="card"><h3>' + esc(C.cls) + (C.uim ? ' &middot; UIM + APBA' : '') + (C.complete ? ' <span class="pill green">Weekend complete</span>' : '') + '</h3>';
+    if (!C.rows.length) { h += '<p class="muted">No boats entered.</p></div>'; return; }
+    h += '<div class="scroll"><table><tr><th>Pos</th><th>Boat</th><th>Team</th>';
+    C.races.forEach(function (r) { h += '<th>R' + r + ' APBA</th>' + (C.uim ? '<th>R' + r + ' UIM</th>' : ''); });
+    h += '<th>Bonus</th><th>APBA total</th>' + (C.uim ? '<th>UIM total</th>' : '') + '<th></th></tr>';
+    C.rows.forEach(function (b) {
+      h += '<tr><td><b>' + b.pos + '</b></td><td><b>' + esc(b.num) + '</b></td><td class="wrap">' + esc(b.team) + '</td>';
+      C.races.forEach(function (r) { var x = b.races[r]; h += '<td>' + (x ? x.apba : '') + '</td>' + (C.uim ? '<td>' + (x ? x.uim : '') + '</td>' : ''); });
+      h += '<td>' + b.bonus + '</td><td><b>' + b.total + '</b></td>' + (C.uim ? '<td><b>' + b.uim + '</b></td>' : '') + '<td>' + (b.tie ? '<span class="pill red">TIE</span>' : '') + '</td></tr>';
+    });
+    h += '</table></div>' + (C.rows.some(function (b) { return b.tie; }) ? '<div class="bar" style="margin-top:8px"><button class="btn amber small" data-tie="' + ci + '">Set tie order</button></div>' : '') + '</div>';
+  });
+  var el = $('v-points'); el.innerHTML = h;
+  el.querySelectorAll('#ptsSeg button').forEach(function (b) { b.onclick = function () { S.ptsOfficial = b.dataset.o === '1'; saveS(); dirty(); }; });
+  el.querySelectorAll('[data-tie]').forEach(function (b) {
+    b.onclick = function () {
+      var C = st[b.dataset.tie], order = C.rows.slice().sort(function (a, b2) { return a.rank - b2.rank; }).map(function (x) { return x; });
+      function draw() {
+        $('mbox').innerHTML = '<h2>Tie order: ' + esc(C.cls) + '</h2><p class="muted">Move boats up or down to break ties. Only boats with equal points are affected.</p>' +
+          order.map(function (x, i) { return '<div class="bar"><b style="width:40px">' + (i + 1) + '</b><span style="flex:1">#' + esc(x.num) + ' ' + esc(x.team) + ' (' + x.apba + ' pts)</span><button class="btn small gray" data-up="' + i + '">Up</button><button class="btn small gray" data-dn="' + i + '">Down</button></div>'; }).join('') +
+          '<div class="bar"><button class="btn" id="tieOk">Save order</button><button class="btn gray" id="tieNo">Cancel</button></div>';
+        $('mbox').querySelectorAll('[data-up]').forEach(function (u) { u.onclick = function () { var i = Number(u.dataset.up); if (i > 0) { var t = order[i]; order[i] = order[i - 1]; order[i - 1] = t; draw(); } }; });
+        $('mbox').querySelectorAll('[data-dn]').forEach(function (u) { u.onclick = function () { var i = Number(u.dataset.dn); if (i < order.length - 1) { var t = order[i]; order[i] = order[i + 1]; order[i + 1] = t; draw(); } }; });
+        $('tieNo').onclick = closeModal;
+        $('tieOk').onclick = function () { addEvent({ type: 'tiebreak', cls: C.cls, order: order.map(function (x) { return x.key; }) }); closeModal(); };
+      }
+      modal('', draw);
+    };
+  });
+}
+
+/* ================= QUALIFYING ================= */
+function viewQual() {
+  var list = RWO.computeQual(cfg(), EVENTS);
+  if (!list.length) { $('v-qual').innerHTML = '<div class="card">No classes.</div>'; return; }
+  if (!S.qcls || !list.some(function (c) { return c.cls === S.qcls; })) S.qcls = list[0].cls;
+  var C = list.filter(function (c) { return c.cls === S.qcls; })[0];
+  var h = '<div class="bar"><select id="qSel">' + list.map(function (c) { return '<option' + (c.cls === S.qcls ? ' selected' : '') + '>' + esc(c.cls) + '</option>'; }).join('') + '</select><span class="muted">One timed lap per boat. Several boats can be on course at once.</span></div>';
+  h += '<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr))">';
+  C.rows.slice().sort(function (a, b) { return RWO.numSort(a.num, b.num); }).forEach(function (r) {
+    var cl = r.status === 'ON COURSE' ? 'on' : r.status === 'DONE' ? 'done' : '';
+    h += '<div class="qtile ' + cl + '"><div class="num">' + esc(r.num) + '</div><div class="muted">' + esc(r.team) + '</div>';
+    if (r.status === 'ON COURSE') h += '<div class="clock" data-qclock="' + r.goT + '">' + clock(Date.now() - r.goT) + '</div><button class="btn green" style="font-size:22px;padding:18px" data-qfin="' + esc(r.key) + '">FINISH</button>';
+    else if (r.status === 'DONE') h += '<div class="clock">' + r.timeStr + '</div><div><b>P' + r.pos + '</b></div>';
+    else if (r.status === 'DNS') h += '<div class="clock">DNS</div>';
+    else h += '<button class="btn" style="font-size:22px;padding:18px" data-qgo="' + esc(r.key) + '">GO</button>';
+    h += '<div class="row"><button class="btn gray small" data-qundo="' + esc(r.key) + '">Undo</button>' + (r.status === 'WAITING' ? '<button class="btn amber small" data-qdns="' + esc(r.key) + '">DNS</button>' : '') + '</div></div>';
+  });
+  h += '</div><div class="card" style="margin-top:12px"><h3>' + esc(C.cls) + ' qualifying order</h3><table><tr><th>Pos</th><th>Boat</th><th>Team</th><th>Time</th></tr>' +
+    C.rows.filter(function (r) { return r.status === 'DONE'; }).map(function (r) { return '<tr><td><b>' + r.pos + '</b></td><td><b>' + esc(r.num) + '</b></td><td>' + esc(r.team) + '</td><td>' + r.timeStr + '</td></tr>'; }).join('') + '</table></div>';
+  var el = $('v-qual'); el.innerHTML = h;
+  $('qSel').onchange = function () { S.qcls = this.value; saveS(); dirty(); };
+  el.querySelectorAll('[data-qgo]').forEach(function (b) { b.addEventListener('pointerdown', function (e) { e.preventDefault(); addEvent({ type: 'qgo', boat: b.dataset.qgo, t: Date.now() }); wakeLock(); }); });
+  el.querySelectorAll('[data-qfin]').forEach(function (b) { b.addEventListener('pointerdown', function (e) { e.preventDefault(); addEvent({ type: 'qfin', boat: b.dataset.qfin, t: Date.now() }); }); });
+  el.querySelectorAll('[data-qdns]').forEach(function (b) { b.onclick = function () { addEvent({ type: 'qdns', boat: b.dataset.qdns }); }; });
+  el.querySelectorAll('[data-qundo]').forEach(function (b) {
+    b.onclick = function () {
+      var v = voided(), mine = EVENTS.filter(function (e) { return (e.type === 'qgo' || e.type === 'qfin' || e.type === 'qdns') && e.boat === b.dataset.qundo && !v[e.id]; }).sort(function (a, c) { return a.at - c.at; }).pop();
+      if (!mine) { toast('Nothing to undo', 'err'); return; }
+      addEvent({ type: 'void', target: mine.id, reason: 'Qualifying undo' });
+    };
+  });
+}
+
+/* ================= LOG ================= */
+function viewLog() {
+  var log = RWO.changeLog(EVENTS).slice(0, 400);
+  $('v-log').innerHTML = '<div class="card"><h3>Change log</h3><p class="muted">Every edit, penalty, undo, red flag and status change, newest first. Lap taps themselves are in the EVENTS tab of the Sheet.</p><table><tr><th>When</th><th>Race</th><th>Who</th><th>What</th></tr>' +
+    log.map(function (l) { return '<tr><td>' + new Date(l.at).toLocaleString() + '</td><td>' + esc(l.race) + '</td><td>' + esc(l.who) + '</td><td class="wrap">' + esc(l.what) + '</td></tr>'; }).join('') + '</table></div>';
+}
+
+/* ================= SETTINGS ================= */
+function viewSettings() {
+  var n = Object.keys(PENDING).length;
+  var h = '<div class="card"><h3>Connect this iPad</h3>' +
+    '<label class="f">Sheet web app link (from RWO Scoring menu &gt; Show web app links)</label><input class="f" id="sUrl" value="' + esc(S.url || '') + '" placeholder="https://script.google.com/macros/s/.../exec" autocapitalize="off" autocorrect="off">' +
+    '<div class="two"><div><label class="f">Your PIN</label><input class="f" id="sPin" value="' + esc(S.pin || '') + '" autocapitalize="off" autocorrect="off"></div>' +
+    '<div><label class="f">This iPad\'s name</label><input class="f" id="sName" value="' + esc(S.devName || '') + '" placeholder="e.g. Brittany iPad"></div></div>' +
+    '<div class="bar" style="margin-top:12px"><button class="btn green" id="sSave">Save and connect</button><button class="btn" id="sSync">Sync now</button></div>' +
+    '<p>Status: <b>' + (S.practice ? 'Practice mode (not syncing)' : lastErr ? lastErr : lastOk ? 'Synced ' + new Date(lastOk).toLocaleTimeString() : 'Not synced yet') + '</b> &middot; Taps waiting to send: <b>' + n + '</b> &middot; Events on this iPad: <b>' + EVENTS.length + '</b></p>' +
+    '<p class="muted">Taps are saved on this iPad first. If the internet drops, keep scoring: everything sends automatically when it comes back. Never delete this app or clear Safari data during an event.</p></div>';
+  h += '<div class="card"><h3>Practice mode</h3><p>Try everything with demo boats. Nothing is sent to the Sheet, and your real data is untouched.</p>' +
+    '<div class="bar"><button class="btn ' + (S.practice ? 'gray' : 'amber') + '" id="sPrac">' + (S.practice ? 'Turn practice mode OFF' : 'Turn practice mode ON') + '</button>' +
+    (S.practice ? '<button class="btn ' + (S.robots ? 'gray' : '') + '" id="sRob">' + (S.robots ? 'Robot backups: ON' : 'Robot backups: OFF') + '</button><button class="btn red" id="sReset">Erase practice data</button>' : '') + '</div>' +
+    (S.practice ? '<p class="muted">Robot backups pretend to be Backup iPads 1 and 2: they tap a fraction of a second after you, sometimes late and sometimes not at all, so you can practice the Review tab.</p>' : '') + '</div>';
+  h += '<div class="card"><h3>Tools</h3><div class="bar"><button class="btn gray" id="sReload">Reload everything from Sheet</button><button class="btn gray" id="sExport">Download a backup of this iPad\'s data</button></div>' +
+    '<p class="muted">iPad ID ' + esc(S.dev) + ' &middot; App version ' + VERSION + '</p></div>';
+  var el = $('v-settings'); el.innerHTML = h;
+  $('sSave').onclick = function () {
+    S.url = $('sUrl').value.trim(); S.pin = $('sPin').value.trim(); S.devName = $('sName').value.trim() || S.dev; saveS();
+    lastErr = ''; toast('Saved. Connecting...'); syncNow().then(function () { toast(lastErr ? 'Problem: ' + lastErr : 'Connected', lastErr ? 'err' : 'ok'); render(); });
+  };
+  $('sSync').onclick = function () { syncNow().then(render); };
+  $('sPrac').onclick = async function () { S.practice = !S.practice; saveS(); await initData(); if (S.practice && !S.robots) { S.robots = true; saveS(); } render(); };
+  var rb = $('sRob'); if (rb) rb.onclick = function () { S.robots = !S.robots; saveS(); render(); };
+  var rs = $('sReset'); if (rs) rs.onclick = async function () { if (confirm('Erase all practice data?')) { await resetLocal(false); render(); } };
+  $('sReload').onclick = async function () {
+    if (!confirm('Reload all data from the Sheet? Taps not yet sent stay on this iPad and will still be sent.')) return;
+    await resetLocal(false); syncNow().then(render);
+  };
+  $('sExport').onclick = function () {
+    var blob = new Blob([JSON.stringify({ device: S.dev, name: S.devName, exported: new Date().toISOString(), events: EVENTS }, null, 1)], { type: 'application/json' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'rwo-backup-' + (S.devName || S.dev) + '-' + Date.now() + '.json'; a.click();
+  };
+}
+
+/* ================= start ================= */
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');
+initData().then(function () {
+  if (!S.practice && (!S.url || !S.pin)) S.view = 'settings';
+  render(); syncNow();
+}).catch(function (err) { document.body.innerHTML = '<div style="padding:20px;font-size:18px">This iPad could not open its storage: ' + esc(err) + '. Make sure Safari is not in Private mode.</div>'; });
+</script>
+</body>
+</html>
