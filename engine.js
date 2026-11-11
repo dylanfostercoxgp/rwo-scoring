@@ -9,7 +9,7 @@ var RWO = (function () {
   var UIM = [20, 15, 12, 9, 7, 5, 4, 3, 2, 1];
   var UIM_CLASSES = ['Class 1', 'Class 2 (500)', 'Super Cat', 'Super Stock'];
   var CLUSTER_MS = 20000;   // taps from different iPads within 20 s = the same line crossing
-  var MIN_LAP_MS = 30000;   // nothing shorter than 30 s counts as a lap
+  var MIN_LAP_MS = 10000;   // after lap 1, nothing shorter than 10 s counts as a lap (matches the 10 s tap cooldown)
   var DISAGREE_MS = 1000;   // iPads more than 1 s apart get flagged
 
   var PEN_TYPES = {
@@ -285,6 +285,9 @@ var RWO = (function () {
         var i = running.indexOf(r), j = Math.min(running.length - 1, i + r.drop);
         running.splice(i, 1); running.splice(j, 0, r);
       });
+      // last-place-points penalty: that boat drops to the bottom of the boats that raced, everyone else moves up
+      var lp = running.filter(function (r) { return r.lastPlace; });
+      running = running.filter(function (r) { return !r.lastPlace; }).concat(lp);
       C.rows = running.concat(C.rows.filter(function (r) { return grp(r) > 0; }));
 
       var leader = C.rows[0];
@@ -323,7 +326,7 @@ var RWO = (function () {
       }),
       classes: classes.map(function (C) { return { cls: C.cls, laps: C.laps, reg: C.reg, uim: isUim(C.cls), rows: C.rows }; }),
       status: status, official: official, allDone: allDone, flags: flags, redflags: rfs, main: main, devices: activeDevs,
-      segment: rfs.length, calledAt: calledAt
+      segment: rfs.length, calledAt: calledAt, endT: endEv ? endEv.t : calledAt
     };
   }
 
@@ -354,6 +357,7 @@ var RWO = (function () {
           b.races[r] = { apba: row.apba, uim: row.uim, pos: row.posLabel, status: row.status };
           b.apba += row.apba || 0; b.uim += row.uim || 0;
           if (row.status !== 'DNS') b.allDns = false;
+          if (row.lastPlace) b.noBonus = true; // last-place-points penalty: no bonus for boats beaten
         });
       });
       var list = Object.keys(boatMap).map(function (k) { return boatMap[k]; });
@@ -365,7 +369,7 @@ var RWO = (function () {
       list.forEach(function (b, i) {
         b.rank = i + 1;
         b.tie = list.some(function (o) { return o !== b && o.apba === b.apba && !o.allDns && !b.allDns && counted.length > 0; }) && order.indexOf(b.key) < 0;
-        b.bonus = complete && !b.allDns ? Math.max(0, reg - b.rank) : 0;
+        b.bonus = complete && !b.allDns && !b.noBonus ? Math.max(0, reg - b.rank) : 0;
         b.total = b.apba + b.bonus;
       });
       list.sort(function (a, b) { return b.total - a.total || a.rank - b.rank; });

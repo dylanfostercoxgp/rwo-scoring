@@ -147,8 +147,8 @@
 <script src="engine.js"></script>
 <script>
 'use strict';
-var VERSION = '3.0.1';
-var LOCK_MS = 30000;
+var VERSION = '3.0.2';
+var LOCK_MS = 10000; // tap cooldown per boat
 var COLORS = ['#1a73e8', '#d93025', '#188038', '#e37400', '#8430ce', '#007b83', '#b31412', '#5f6368', '#c26401', '#3949ab', '#00897b', '#6d4c41'];
 var DEMO_CFG = {
   entries: [
@@ -411,7 +411,13 @@ function viewRace() {
     var st = curSegStartFor(R, g.group), label = g.classes.map(function (c, i) { return esc(c) + ' (' + g.laps[i] + ' laps)'; }).join(', ');
     var restart = R.segment > 0 && R.status !== 'ENDED';
     h += '<div class="start"><div class="lbl"><b>Start ' + g.group + (restart ? ' (restart ' + R.segment + ')' : '') + '</b>' + label + '</div>';
-    if (st != null) h += '<div class="clock" data-clock="' + st + '">' + clock(Date.now() - st) + '</div><button class="btn gray small" data-unstart="' + g.group + '">Undo start</button>';
+    // the clock stops when the race is ended, or when every boat in this start is finished or out
+    var gRows = []; R.classes.forEach(function (C) { if (g.classes.indexOf(C.cls) >= 0) C.rows.forEach(function (r) { gRows.push(r); }); });
+    var allIn = gRows.length && gRows.every(function (r) { return r.status !== 'RACING' && r.status !== 'NOT STARTED'; });
+    var stopT = R.status === 'ENDED' ? R.endT : allIn ? Math.max.apply(null, gRows.map(function (r) { return r.lastT || 0; })) : null;
+    var st0 = st != null ? st : (R.status === 'ENDED' ? g.startT : null);
+    if (st0 != null && stopT) h += '<div class="clock" style="color:#137333">' + clock(stopT - st0) + '</div><span class="pill green">' + (R.status === 'ENDED' ? 'ENDED' : 'ALL IN') + '</span>';
+    else if (st != null) h += '<div class="clock" data-clock="' + st + '">' + clock(Date.now() - st) + '</div><button class="btn gray small" data-unstart="' + g.group + '">Undo start</button>';
     else if (R.status !== 'ENDED') h += '<button class="btn green go" data-start="' + g.group + '">START</button>';
     else h += '<div class="clock">Done</div>';
     h += '</div>';
