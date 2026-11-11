@@ -209,7 +209,8 @@ var RWO = (function () {
         if (s > 0 && rfs[s - 1].mode === 'original') laps = [];
         var end = s < rfs.length ? rfs[s].t : Infinity, prev = st;
         cls.forEach(function (c) {
-          if (c.t > st && c.t < end && c.t - prev >= MIN_LAP_MS - 1) {
+          // The first tap after a START always counts as lap 1. After that, a lap must be at least 30 s.
+          if (c.t > st && c.t < end && (prev === st || c.t - prev >= MIN_LAP_MS - 1)) {
             laps.push({ t: c.t, dur: c.t - prev, seg: s, segT0: st, flag: c.flag, fkey: c.fkey, taps: c.taps });
             prev = c.t;
           }
@@ -237,7 +238,7 @@ var RWO = (function () {
     classes.forEach(function (C) {
       var target = C.laps, reg = C.rows.length, offset = Math.max(0, 3 - reg);
       C.rows.forEach(function (r) {
-        var laps = r.allLaps.slice(0, target);
+        var laps = target > 0 ? r.allLaps.slice(0, target) : r.allLaps.slice(); // missing lap count: keep counting, never auto-finish
         r.lapList = laps;
         r.extra = r.allLaps.length - laps.length;
         r.laps = laps.length;

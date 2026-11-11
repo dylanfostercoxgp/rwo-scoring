@@ -147,7 +147,7 @@
 <script src="engine.js"></script>
 <script>
 'use strict';
-var VERSION = '3.0.0';
+var VERSION = '3.0.1';
 var LOCK_MS = 30000;
 var COLORS = ['#1a73e8', '#d93025', '#188038', '#e37400', '#8430ce', '#007b83', '#b31412', '#5f6368', '#c26401', '#3949ab', '#00897b', '#6d4c41'];
 var DEMO_CFG = {
@@ -400,6 +400,8 @@ function viewRace() {
     '<span class="spacer"></span>' +
     (R.status === 'ENDED' ? '<button class="btn gray" id="reopenBtn">Reopen race</button>' :
       '<button class="btn red" id="rfBtn">RED FLAG</button><button class="btn gray" id="endBtn">End race</button>') + '</div>';
+  var noLaps = R.classes.filter(function (C) { return !C.laps; }).map(function (C) { return C.cls; });
+  if (noLaps.length) h += '<div class="banner red">No lap count for ' + esc(noLaps.join(', ')) + '. Fix the Laps column in RACE_STARTS, or set it on the Edit &amp; Penalties tab.</div>';
   if (!role) h += '<div class="banner info">Pick this iPad\'s job for this race: Main, Backup 1 or Backup 2.</div>';
   if (R.status === 'RED FLAG') h += '<div class="banner red">RED FLAG. Taps are paused. When racing resumes, tap START for each start below.</div>';
   if (R.status === 'ENDED') h += '<div class="banner done">Race ended' + (R.calledAt ? ' (called at the red flag)' : '') + '. Check the Review tab, then make it official on the Results tab.' + (R.official ? ' This race is OFFICIAL.' : '') + '</div>';
